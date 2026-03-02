@@ -70,19 +70,19 @@ const UIOverlay: React.FC<UIOverlayProps> = ({ score, currentWeapon, ammo, onSwi
 
         {/* Weapons and Ammo */}
         <div className="flex flex-col gap-4 items-end pointer-events-auto">
-          <div className="flex gap-2">
-            {(['pistol', 'rifle', 'sniper'] as WeaponType[]).map((type) => (
+          <div className="flex gap-2 flex-wrap justify-end">
+            {(['pistol', 'rifle', 'sniper', 'ak47', 'awm'] as WeaponType[]).map((type, index) => (
               <button
                 key={type}
                 onClick={() => onSwitchWeapon(type)}
-                className={`p-3 w-32 border-2 transition-all backdrop-blur-md ${
+                className={`p-3 w-24 border-2 transition-all backdrop-blur-md ${
                   currentWeapon === type 
                     ? 'bg-red-600/40 border-red-500 text-white shadow-[0_0_15px_rgba(239,68,68,0.5)]' 
                     : 'bg-black/40 border-white/20 text-white/40 hover:border-white/40'
                 }`}
               >
-                <div className="text-[10px] uppercase font-bold mb-1 opacity-60">Slot {type === 'pistol' ? '1' : type === 'rifle' ? '2' : '3'}</div>
-                <div className="text-sm font-black truncate">{WEAPONS[type].name}</div>
+                <div className="text-[10px] uppercase font-bold mb-1 opacity-60">Slot {index + 1}</div>
+                <div className="text-[10px] font-black truncate">{WEAPONS[type].name}</div>
               </button>
             ))}
           </div>
@@ -119,7 +119,7 @@ const UIOverlay: React.FC<UIOverlayProps> = ({ score, currentWeapon, ammo, onSwi
         [SPACE] JUMP <br/>
         [LMB] FIRE <br/>
         [RMB] BUILD <br/>
-        [1-3] SWAP <br/>
+        [1-6] SWAP <br/>
         [R] RELOAD <br/>
         [ESC] UNLOCK MOUSE
       </div>

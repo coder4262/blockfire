@@ -7,12 +7,14 @@ import { WEAPONS } from '../constants';
 
 interface PlayerProps {
   onFire: (intersectId?: string) => void;
+  onUpdate: (pos: [number, number, number], rot: [number, number, number]) => void;
   currentWeapon: WeaponType;
   ammo: number;
   blocks: any[];
+  removeBlock: (id: string) => void;
 }
 
-const Player: React.FC<PlayerProps> = ({ onFire, currentWeapon, ammo, blocks }) => {
+const Player: React.FC<PlayerProps> = ({ onFire, onUpdate, currentWeapon, ammo, blocks, removeBlock }) => {
   const { camera, raycaster, scene } = useThree();
   const gunRef = useRef<THREE.Group>(null);
   const [isFiring, setIsFiring] = useState(false);
@@ -46,24 +48,25 @@ const Player: React.FC<PlayerProps> = ({ onFire, currentWeapon, ammo, blocks }) 
     // Shooting logic
     // Fix: raycaster.setFromCamera requires a Vector2 object, not a plain object literal.
     raycaster.setFromCamera(new THREE.Vector2(0, 0), camera);
-    const intersects = raycaster.intersectObjects(scene.children);
+    const intersects = raycaster.intersectObjects(scene.children, true);
     
-    let hitId: string | undefined;
     if (intersects.length > 0) {
-        // Find if we hit a mesh that belongs to a block
         const hit = intersects[0];
-        // We can attach custom data to meshes to identify blocks
-        // In this simple implementation, we'll just look at the object's parent or identity
-        // For now, onFire will handle generic effects
-        onFire();
+        const blockId = hit.object.userData?.id;
+        const type = hit.object.userData?.type;
         
-        // Target identification (simplified logic: check if color is target color)
-        const targetColor = new THREE.Color(0xef4444);
-        if ((hit.object as THREE.Mesh).material instanceof THREE.MeshStandardMaterial) {
-            const mat = (hit.object as THREE.Mesh).material as THREE.MeshStandardMaterial;
-            if (mat.color.equals(targetColor)) {
-                 // In a more robust system, we'd map this back to an ID
+        if (blockId) {
+            if (type === 'enemy') {
+                // We hit an enemy
+                removeBlock(blockId); // This will trigger enemy_death on server
+                onFire(blockId);
+            } else {
+                // We hit a block
+                removeBlock(blockId);
+                onFire(blockId);
             }
+        } else {
+            onFire();
         }
     } else {
         onFire();
@@ -92,6 +95,12 @@ const Player: React.FC<PlayerProps> = ({ onFire, currentWeapon, ammo, blocks }) 
     camera.position.z += velocity.current.z * delta;
 
     velocity.current.multiplyScalar(0.9); // Friction
+
+    // Send update to server
+    onUpdate(
+      [camera.position.x, camera.position.y, camera.position.z],
+      [camera.rotation.x, camera.rotation.y, camera.rotation.z]
+    );
 
     // Gun positioning (follow camera)
     if (gunRef.current) {

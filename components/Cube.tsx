@@ -36,6 +36,8 @@ const Cube: React.FC<CubeProps> = ({ position, type, id, removeBlock, addBlock }
   return (
     <mesh
       position={position}
+      name={id}
+      userData={{ type: 'block', id }}
       onPointerOver={() => setHovered(true)}
       onPointerOut={() => setHovered(false)}
       onPointerDown={handleClick}

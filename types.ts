@@ -1,5 +1,5 @@
 
-export type BlockType = 'grass' | 'dirt' | 'stone' | 'wood' | 'glass' | 'target';
+export type BlockType = 'grass' | 'dirt' | 'stone' | 'wood' | 'glass' | 'target' | 'sandbag';
 
 export interface Block {
   id: string;
@@ -7,7 +7,24 @@ export interface Block {
   type: BlockType;
 }
 
-export type WeaponType = 'pistol' | 'rifle' | 'sniper';
+export type WeaponType = 'pistol' | 'rifle' | 'sniper' | 'ak47' | 'awm';
+
+export interface Enemy {
+  id: string;
+  pos: [number, number, number];
+  rot: [number, number, number];
+  health: number;
+  weapon: WeaponType;
+  lastFire: number;
+}
+
+export interface Projectile {
+  id: string;
+  pos: [number, number, number];
+  vel: [number, number, number];
+  ownerId: string;
+  type: WeaponType;
+}
 
 export interface Weapon {
   name: string;
@@ -19,11 +36,35 @@ export interface Weapon {
   recoil: number;
 }
 
+export interface Player {
+  id: string;
+  pos: [number, number, number];
+  rot: [number, number, number];
+  currentWeapon: WeaponType;
+  lastUpdate: number;
+  lastFire?: number;
+}
+
+export type MessageType = 
+  | 'init' 
+  | 'player_update' 
+  | 'player_join' 
+  | 'player_leave' 
+  | 'block_add' 
+  | 'block_remove' 
+  | 'fire' 
+  | 'score_update';
+
+export interface GameMessage {
+  type: MessageType;
+  payload: any;
+  senderId?: string;
+}
+
 export interface GameState {
   blocks: Block[];
+  players: Record<string, Player>;
+  enemies: Record<string, Enemy>;
+  projectiles: Projectile[];
   score: number;
-  currentWeapon: WeaponType;
-  ammo: Record<WeaponType, number>;
-  isPaused: boolean;
-  isGameOver: boolean;
 }

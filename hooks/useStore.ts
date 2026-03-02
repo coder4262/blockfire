@@ -1,45 +1,139 @@
-
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import { nanoid } from 'nanoid';
-import { Block, BlockType, WeaponType } from '../types';
+import { Block, BlockType, WeaponType, Player, GameMessage, Enemy } from '../types';
 import { WEAPONS } from '../constants';
 
-const INITIAL_BLOCKS: Block[] = [
-  { id: nanoid(), pos: [0, 0, -5], type: 'target' },
-  { id: nanoid(), pos: [2, 1, -8], type: 'target' },
-  { id: nanoid(), pos: [-2, 2, -10], type: 'target' },
-  { id: nanoid(), pos: [5, 0, -12], type: 'target' },
-  { id: nanoid(), pos: [-4, 0, -6], type: 'target' },
-];
-
 export const useStore = () => {
-  const [blocks, setBlocks] = useState<Block[]>(INITIAL_BLOCKS);
+  const [blocks, setBlocks] = useState<Block[]>([]);
+  const [players, setPlayers] = useState<Record<string, Player>>({});
+  const [enemies, setEnemies] = useState<Record<string, Enemy>>({});
   const [score, setScore] = useState(0);
   const [currentWeapon, setCurrentWeapon] = useState<WeaponType>('pistol');
   const [ammo, setAmmo] = useState<Record<WeaponType, number>>({
     pistol: WEAPONS.pistol.maxAmmo,
     rifle: WEAPONS.rifle.maxAmmo,
     sniper: WEAPONS.sniper.maxAmmo,
+    ak47: WEAPONS.ak47.maxAmmo,
+    awm: WEAPONS.awm.maxAmmo,
   });
+  const [myId, setMyId] = useState<string | null>(null);
+  const socketRef = useRef<WebSocket | null>(null);
+
+  useEffect(() => {
+    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+    const socket = new WebSocket(`${protocol}//${window.location.host}`);
+    socketRef.current = socket;
+
+    socket.onmessage = (event) => {
+      const message: GameMessage = JSON.parse(event.data);
+      const { type, payload, senderId } = message;
+
+      switch (type) {
+        case 'init':
+          setMyId(payload.id);
+          setBlocks(payload.blocks);
+          setPlayers(payload.players);
+          setEnemies(payload.enemies || {});
+          setScore(payload.score);
+          break;
+        case 'player_update':
+          if (senderId) {
+            setPlayers(prev => ({ ...prev, [senderId]: payload }));
+          }
+          break;
+        case 'player_leave':
+          setPlayers(prev => {
+            const next = { ...prev };
+            delete next[payload];
+            return next;
+          });
+          break;
+        case 'block_add':
+          setBlocks(prev => [...prev, payload]);
+          break;
+        case 'block_remove':
+          setBlocks(prev => prev.filter(b => b.id !== payload));
+          break;
+        case 'enemy_spawn':
+          setEnemies(prev => ({ ...prev, [payload.id]: payload }));
+          break;
+        case 'enemy_update':
+          setEnemies(prev => {
+            const next = { ...prev };
+            payload.forEach((e: Enemy) => {
+              if (next[e.id]) {
+                next[e.id] = { ...next[e.id], ...e };
+              } else {
+                next[e.id] = e;
+              }
+            });
+            return next;
+          });
+          break;
+        case 'enemy_fire':
+          setEnemies(prev => {
+            if (!prev[payload.enemyId]) return prev;
+            return {
+              ...prev,
+              [payload.enemyId]: { ...prev[payload.enemyId], lastFire: Date.now() }
+            };
+          });
+          break;
+        case 'enemy_death':
+          setEnemies(prev => {
+            const next = { ...prev };
+            delete next[payload];
+            return next;
+          });
+          break;
+        case 'fire':
+          if (senderId && senderId !== myId) {
+            setPlayers(prev => {
+              if (!prev[senderId]) return prev;
+              return {
+                ...prev,
+                [senderId]: { ...prev[senderId], lastFire: Date.now() }
+              };
+            });
+          }
+          break;
+        case 'score_update':
+          setScore(payload);
+          break;
+      }
+    };
+
+    return () => {
+      socket.close();
+    };
+  }, [myId]);
+
+  const sendMessage = useCallback((type: string, payload: any) => {
+    if (socketRef.current?.readyState === WebSocket.OPEN) {
+      socketRef.current.send(JSON.stringify({ type, payload }));
+    }
+  }, []);
+
+  const updateMyPlayer = useCallback((pos: [number, number, number], rot: [number, number, number]) => {
+    if (!myId) return;
+    sendMessage('player_update', { pos, rot, currentWeapon });
+  }, [myId, currentWeapon, sendMessage]);
 
   const addBlock = useCallback((x: number, y: number, z: number, type: BlockType = 'grass') => {
-    setBlocks(prev => [...prev, { id: nanoid(), pos: [x, y, z], type }]);
-  }, []);
+    sendMessage('block_add', { pos: [x, y, z], type });
+  }, [sendMessage]);
 
   const removeBlock = useCallback((id: string) => {
-    setBlocks(prev => {
-        const block = prev.find(b => b.id === id);
-        if (block?.type === 'target') setScore(s => s + 100);
-        return prev.filter(b => b.id !== id);
-    });
-  }, []);
+    sendMessage('block_remove', id);
+  }, [sendMessage]);
 
   const fireWeapon = useCallback(() => {
     setAmmo(prev => {
         if (prev[currentWeapon] <= 0) return prev;
+        sendMessage('fire', { weapon: currentWeapon });
         return { ...prev, [currentWeapon]: prev[currentWeapon] - 1 };
     });
-  }, [currentWeapon]);
+  }, [currentWeapon, sendMessage]);
 
   const reloadWeapon = useCallback(() => {
     setAmmo(prev => ({ ...prev, [currentWeapon]: WEAPONS[currentWeapon].maxAmmo }));
@@ -49,13 +143,11 @@ export const useStore = () => {
     setCurrentWeapon(type);
   }, []);
 
-  const resetBlocks = useCallback(() => {
-    setBlocks(INITIAL_BLOCKS);
-    setScore(0);
-  }, []);
-
   return {
     blocks,
+    players,
+    enemies,
+    myId,
     addBlock,
     removeBlock,
     score,
@@ -64,6 +156,6 @@ export const useStore = () => {
     fireWeapon,
     reloadWeapon,
     switchWeapon,
-    resetBlocks,
+    updateMyPlayer,
   };
 };

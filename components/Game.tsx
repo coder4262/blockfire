@@ -2,11 +2,24 @@ import React, { Suspense } from 'react';
 import { Canvas } from '@react-three/fiber';
 import { Sky, Stars, Environment, ContactShadows } from '@react-three/drei';
 import Player from './Player';
+import OtherPlayer from './OtherPlayer';
+import EnemyComponent from './Enemy';
 import Cube from './Cube';
 import { useStore } from '../hooks/useStore';
 
 const Game: React.FC = () => {
-  const { blocks, addBlock, removeBlock, currentWeapon, ammo, fireWeapon, score } = useStore();
+  const { 
+    blocks, 
+    players, 
+    enemies,
+    myId, 
+    addBlock, 
+    removeBlock, 
+    currentWeapon, 
+    ammo, 
+    fireWeapon, 
+    updateMyPlayer 
+  } = useStore();
 
   return (
     <div className="w-full h-full bg-slate-900">
@@ -19,10 +32,22 @@ const Game: React.FC = () => {
         <Suspense fallback={null}>
           <Player 
             onFire={fireWeapon} 
+            onUpdate={updateMyPlayer}
             currentWeapon={currentWeapon} 
             ammo={ammo[currentWeapon]} 
             blocks={blocks}
+            removeBlock={removeBlock}
           />
+
+          {/* Render other players */}
+          {Object.values(players).map((player) => (
+            player.id !== myId && <OtherPlayer key={player.id} player={player} />
+          ))}
+
+          {/* Render enemies */}
+          {Object.values(enemies).map((enemy) => (
+            <EnemyComponent key={enemy.id} enemy={enemy} />
+          ))}
           
           <group>
             {blocks.map(block => (

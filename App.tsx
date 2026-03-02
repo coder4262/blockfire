@@ -19,6 +19,8 @@ const App: React.FC = () => {
       if (e.key === '1') switchWeapon('pistol');
       if (e.key === '2') switchWeapon('rifle');
       if (e.key === '3') switchWeapon('sniper');
+      if (e.key === '4') switchWeapon('ak47');
+      if (e.key === '5') switchWeapon('awm');
       if (e.key === 'r' || e.key === 'R') reloadWeapon();
     };
     window.addEventListener('keydown', handleKeyPress);
@@ -54,7 +56,7 @@ const App: React.FC = () => {
                 <div>[WASD] Movement</div>
                 <div>[LMB] Fire Weapon</div>
                 <div>[RMB] Place Block</div>
-                <div>[1-3] Switch Slot</div>
+                <div>[1-6] Switch Slot</div>
             </div>
         </div>
       </div>
