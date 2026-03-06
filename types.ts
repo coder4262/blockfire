@@ -9,7 +9,7 @@ export interface Block {
   type: BlockType;
 }
 
-export type WeaponType = 'pistol' | 'rifle' | 'sniper' | 'ak47' | 'awm';
+export type WeaponType = 'pistol' | 'rifle' | 'sniper' | 'ak47' | 'awm' | 'shotgun' | 'smg' | 'rocket';
 
 export interface Enemy {
   id: string;
@@ -63,7 +63,8 @@ export type MessageType =
   | 'enemy_update'
   | 'enemy_fire'
   | 'enemy_death'
-  | 'mode_change';
+  | 'mode_change'
+  | 'explosion';
 
 export interface GameMessage {
   type: MessageType;

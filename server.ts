@@ -38,26 +38,31 @@ async function startServer() {
   };
 
   // Enemy Spawner
-  const spawnEnemyNest = () => {
+  const spawnEnemy = (withNest = true) => {
     if (mode !== 'pvai') return;
-    const x = (Math.random() - 0.5) * 40;
-    const z = (Math.random() - 0.5) * 40 - 20;
+    // Wider range: 100x100 area
+    const x = (Math.random() - 0.5) * 100;
+    const z = (Math.random() - 0.5) * 100;
     const y = 0;
 
-    // Create sandbags
-    const nestBlocks: Block[] = [
-      { id: nanoid(), pos: [x - 1, y, z - 1], type: 'sandbag' },
-      { id: nanoid(), pos: [x, y, z - 1], type: 'sandbag' },
-      { id: nanoid(), pos: [x + 1, y, z - 1], type: 'sandbag' },
-      { id: nanoid(), pos: [x - 1, y + 1, z - 1], type: 'sandbag' },
-      { id: nanoid(), pos: [x + 1, y + 1, z - 1], type: 'sandbag' },
-    ];
+    if (withNest && Math.random() > 0.3) {
+      // Create sandbags
+      const nestBlocks: Block[] = [
+        { id: nanoid(), pos: [x - 1, y, z - 1], type: 'sandbag' },
+        { id: nanoid(), pos: [x, y, z - 1], type: 'sandbag' },
+        { id: nanoid(), pos: [x + 1, y, z - 1], type: 'sandbag' },
+        { id: nanoid(), pos: [x - 1, y + 1, z - 1], type: 'sandbag' },
+        { id: nanoid(), pos: [x + 1, y + 1, z - 1], type: 'sandbag' },
+      ];
 
-    blocks.push(...nestBlocks);
-    nestBlocks.forEach(b => broadcast({ type: 'block_add', payload: b }));
+      blocks.push(...nestBlocks);
+      nestBlocks.forEach(b => broadcast({ type: 'block_add', payload: b }));
+    }
 
     const enemyId = nanoid();
-    const weapon: WeaponType = Math.random() > 0.5 ? 'ak47' : 'awm';
+    const weapons: WeaponType[] = ['ak47', 'awm', 'rifle', 'sniper', 'smg'];
+    const weapon = weapons[Math.floor(Math.random() * weapons.length)];
+    
     enemies[enemyId] = {
       id: enemyId,
       pos: [x, y, z],
@@ -70,8 +75,8 @@ async function startServer() {
     broadcast({ type: 'enemy_spawn', payload: enemies[enemyId] });
   };
 
-  // Spawn initial nests
-  for (let i = 0; i < 3; i++) spawnEnemyNest();
+  // Spawn initial enemies
+  for (let i = 0; i < 8; i++) spawnEnemy(true);
 
   // Enemy AI Loop
   setInterval(() => {
@@ -96,7 +101,7 @@ async function startServer() {
         }
       });
 
-      if (nearestPlayer && minDist < 30) {
+      if (nearestPlayer && minDist < 50) { // Increased detection range
         // Aim at player
         const dx = (nearestPlayer as Player).pos[0] - enemy.pos[0];
         const dz = (nearestPlayer as Player).pos[2] - enemy.pos[2];
@@ -105,7 +110,12 @@ async function startServer() {
 
         // Shoot
         const now = Date.now();
-        const fireRate = enemy.weapon === 'ak47' ? 500 : 2000;
+        // Dynamic fire rate based on weapon
+        let fireRate = 1000;
+        if (enemy.weapon === 'ak47') fireRate = 500;
+        if (enemy.weapon === 'smg') fireRate = 200;
+        if (enemy.weapon === 'awm' || enemy.weapon === 'sniper') fireRate = 2000;
+
         if (now - enemy.lastFire > fireRate) {
           enemy.lastFire = now;
           broadcast({ 
@@ -114,9 +124,12 @@ async function startServer() {
           });
 
           // Hit check (simple distance-based probability)
-          const hitChance = Math.max(0.1, 1 - minDist / 40);
+          const hitChance = Math.max(0.05, 0.8 - minDist / 60);
           if (Math.random() < hitChance) {
-            const damage = enemy.weapon === 'ak47' ? 10 : 40;
+            let damage = 10;
+            if (enemy.weapon === 'awm' || enemy.weapon === 'sniper') damage = 40;
+            if (enemy.weapon === 'smg') damage = 5;
+
             (nearestPlayer as Player).health -= damage;
             
             if ((nearestPlayer as Player).health <= 0) {
@@ -143,10 +156,10 @@ async function startServer() {
 
   // Periodic Spawner
   setInterval(() => {
-    if (Object.keys(enemies).length < 10) {
-      spawnEnemyNest();
+    if (Object.keys(enemies).length < 20) {
+      spawnEnemy(Math.random() > 0.5);
     }
-  }, 10000);
+  }, 5000);
 
   wss.on('connection', (ws: WebSocket) => {
     const id = nanoid();
@@ -212,6 +225,79 @@ async function startServer() {
 
           case 'fire':
             broadcast({ type: 'fire', payload: message.payload, senderId: id }, id);
+            break;
+
+          case 'explosion':
+            const { pos, radius, damage: explosionDamage } = message.payload;
+            broadcast({ type: 'explosion', payload: { pos, radius } });
+
+            // Damage players
+            Object.values(players).forEach(p => {
+                const dist = Math.sqrt(
+                    Math.pow(p.pos[0] - pos[0], 2) +
+                    Math.pow(p.pos[1] - pos[1], 2) +
+                    Math.pow(p.pos[2] - pos[2], 2)
+                );
+                if (dist < radius) {
+                    const falloff = 1 - (dist / radius);
+                    const finalDamage = Math.floor(explosionDamage * falloff);
+                    p.health -= finalDamage;
+                    if (p.health <= 0) {
+                        p.health = 0;
+                        broadcast({ type: 'player_death', payload: p.id });
+                        setTimeout(() => {
+                            if (players[p.id]) {
+                                players[p.id].health = 100;
+                                players[p.id].pos = [0, 1.7, 5];
+                                broadcast({ type: 'player_update', payload: players[p.id] });
+                            }
+                        }, 3000);
+                    } else {
+                        broadcast({ type: 'player_damage', payload: { id: p.id, health: p.health } });
+                    }
+                }
+            });
+
+            // Damage enemies
+            Object.values(enemies).forEach(e => {
+                const dist = Math.sqrt(
+                    Math.pow(e.pos[0] - pos[0], 2) +
+                    Math.pow(e.pos[1] - pos[1], 2) +
+                    Math.pow(e.pos[2] - pos[2], 2)
+                );
+                if (dist < radius) {
+                    const falloff = 1 - (dist / radius);
+                    const finalDamage = Math.floor(explosionDamage * falloff);
+                    e.health -= finalDamage;
+                    if (e.health <= 0) {
+                        delete enemies[e.id];
+                        score += 500;
+                        broadcast({ type: 'enemy_death', payload: e.id });
+                        broadcast({ type: 'score_update', payload: score });
+                    }
+                }
+            });
+
+            // Remove blocks
+            const blocksToRemove = blocks.filter(b => {
+                const dist = Math.sqrt(
+                    Math.pow(b.pos[0] - pos[0], 2) +
+                    Math.pow(b.pos[1] - pos[1], 2) +
+                    Math.pow(b.pos[2] - pos[2], 2)
+                );
+                return dist < radius;
+            });
+            blocksToRemove.forEach(b => {
+                const index = blocks.indexOf(b);
+                if (index !== -1) {
+                    if (blocks[index].type === 'target') {
+                        score += 100;
+                        broadcast({ type: 'score_update', payload: score });
+                    }
+                    blocks.splice(index, 1);
+                    broadcast({ type: 'block_remove', payload: b.id });
+                }
+            });
             break;
 
           case 'mode_change':

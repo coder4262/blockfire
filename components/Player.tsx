@@ -15,9 +15,10 @@ interface PlayerProps {
   isDead: boolean;
   mode: 'pvp' | 'pvai';
   damagePlayer: (id: string, damage: number) => void;
+  triggerExplosion: (pos: [number, number, number], radius: number, damage: number) => void;
 }
 
-const Player: React.FC<PlayerProps> = ({ onFire, onUpdate, currentWeapon, ammo, blocks, removeBlock, isDead, mode, damagePlayer }) => {
+const Player: React.FC<PlayerProps> = ({ onFire, onUpdate, currentWeapon, ammo, blocks, removeBlock, isDead, mode, damagePlayer, triggerExplosion }) => {
   const { camera, raycaster, scene } = useThree();
   const gunRef = useRef<THREE.Group>(null);
   const [isFiring, setIsFiring] = useState(false);
@@ -60,6 +61,13 @@ const Player: React.FC<PlayerProps> = ({ onFire, onUpdate, currentWeapon, ammo, 
         const type = hit.object.userData?.type;
         const weaponConfig = WEAPONS[currentWeapon];
         
+        if (currentWeapon === 'rocket') {
+            const impactPos = hit.point;
+            triggerExplosion([impactPos.x, impactPos.y, impactPos.z], 5, weaponConfig.damage);
+            onFire();
+            return;
+        }
+
         if (blockId) {
             if (type === 'enemy') {
                 // We hit an enemy
@@ -156,16 +164,33 @@ const Player: React.FC<PlayerProps> = ({ onFire, onUpdate, currentWeapon, ammo, 
       
       {/* Gun Model (Procedural) */}
       <group ref={gunRef}>
-        {/* Barrel */}
-        <mesh position={[0, 0, -0.2]}>
-          <boxGeometry args={[0.1, 0.1, 0.6]} />
-          <meshStandardMaterial color="#333" />
-        </mesh>
-        {/* Grip */}
-        <mesh position={[0, -0.15, 0]}>
-          <boxGeometry args={[0.1, 0.3, 0.1]} />
-          <meshStandardMaterial color="#222" />
-        </mesh>
+        {currentWeapon === 'rocket' ? (
+            <group rotation={[Math.PI / 2, 0, 0]}>
+                {/* Rocket Launcher Tube */}
+                <mesh position={[0, 0, 0]}>
+                    <cylinderGeometry args={[0.15, 0.15, 1.2, 8]} />
+                    <meshStandardMaterial color="#444" />
+                </mesh>
+                {/* Shoulder Rest */}
+                <mesh position={[0, -0.5, 0.1]}>
+                    <boxGeometry args={[0.2, 0.2, 0.2]} />
+                    <meshStandardMaterial color="#222" />
+                </mesh>
+            </group>
+        ) : (
+            <>
+                {/* Barrel */}
+                <mesh position={[0, 0, -0.2]}>
+                    <boxGeometry args={[0.1, 0.1, 0.6]} />
+                    <meshStandardMaterial color="#333" />
+                </mesh>
+                {/* Grip */}
+                <mesh position={[0, -0.15, 0]}>
+                    <boxGeometry args={[0.1, 0.3, 0.1]} />
+                    <meshStandardMaterial color="#222" />
+                </mesh>
+            </>
+        )}
         {/* Muzzle Flash */}
         {isFiring && (
           <pointLight position={[0, 0, -0.6]} intensity={5} distance={2} color="#facc15" />

@@ -135,6 +135,9 @@ export const useStore = () => {
         case 'mode_change':
           setMode(payload);
           break;
+        case 'explosion':
+          // We could trigger a local effect here if we had an effect system
+          break;
       }
     };
 
@@ -186,6 +189,10 @@ export const useStore = () => {
     sendMessage('player_damage', { id, damage });
   }, [sendMessage]);
 
+  const triggerExplosion = useCallback((pos: [number, number, number], radius: number, damage: number) => {
+    sendMessage('explosion', { pos, radius, damage });
+  }, [sendMessage]);
+
   return {
     blocks,
     players,
@@ -205,6 +212,7 @@ export const useStore = () => {
     switchWeapon,
     switchMode,
     damagePlayer,
+    triggerExplosion,
     updateMyPlayer,
   };
 };

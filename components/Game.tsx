@@ -21,7 +21,8 @@ const Game: React.FC = () => {
     updateMyPlayer,
     isDead,
     mode,
-    damagePlayer
+    damagePlayer,
+    triggerExplosion
   } = useStore();
 
   return (
@@ -43,6 +44,7 @@ const Game: React.FC = () => {
             isDead={isDead}
             mode={mode}
             damagePlayer={damagePlayer}
+            triggerExplosion={triggerExplosion}
           />
 
           {/* Render other players */}
