@@ -8,6 +8,10 @@ export const useStore = () => {
   const [players, setPlayers] = useState<Record<string, Player>>({});
   const [enemies, setEnemies] = useState<Record<string, Enemy>>({});
   const [score, setScore] = useState(0);
+  const [mode, setMode] = useState<'pvp' | 'pvai'>('pvai');
+  const [health, setHealth] = useState(100);
+  const [isDead, setIsDead] = useState(false);
+  const [lastDamageTime, setLastDamageTime] = useState(0);
   const [currentWeapon, setCurrentWeapon] = useState<WeaponType>('pistol');
   const [ammo, setAmmo] = useState<Record<WeaponType, number>>({
     pistol: WEAPONS.pistol.maxAmmo,
@@ -35,10 +39,38 @@ export const useStore = () => {
           setPlayers(payload.players);
           setEnemies(payload.enemies || {});
           setScore(payload.score);
+          setMode(payload.mode || 'pvai');
           break;
         case 'player_update':
           if (senderId) {
             setPlayers(prev => ({ ...prev, [senderId]: payload }));
+          } else if (payload.id === myId) {
+            // Server-forced update (e.g. respawn)
+            setHealth(payload.health);
+            setIsDead(false);
+          }
+          break;
+        case 'player_damage':
+          if (payload.id === myId) {
+            setHealth(payload.health);
+            setLastDamageTime(Date.now());
+          } else {
+            setPlayers(prev => {
+              if (!prev[payload.id]) return prev;
+              return { ...prev, [payload.id]: { ...prev[payload.id], health: payload.health } };
+            });
+          }
+          break;
+        case 'player_death':
+          if (payload === myId) {
+            setIsDead(true);
+            setHealth(0);
+          } else {
+            setPlayers(prev => {
+              const next = { ...prev };
+              if (next[payload]) next[payload].health = 0;
+              return next;
+            });
           }
           break;
         case 'player_leave':
@@ -100,6 +132,9 @@ export const useStore = () => {
         case 'score_update':
           setScore(payload);
           break;
+        case 'mode_change':
+          setMode(payload);
+          break;
       }
     };
 
@@ -143,6 +178,14 @@ export const useStore = () => {
     setCurrentWeapon(type);
   }, []);
 
+  const switchMode = useCallback((newMode: 'pvp' | 'pvai') => {
+    sendMessage('mode_change', newMode);
+  }, [sendMessage]);
+
+  const damagePlayer = useCallback((id: string, damage: number) => {
+    sendMessage('player_damage', { id, damage });
+  }, [sendMessage]);
+
   return {
     blocks,
     players,
@@ -151,11 +194,17 @@ export const useStore = () => {
     addBlock,
     removeBlock,
     score,
+    mode,
+    health,
+    isDead,
+    lastDamageTime,
     currentWeapon,
     ammo,
     fireWeapon,
     reloadWeapon,
     switchWeapon,
+    switchMode,
+    damagePlayer,
     updateMyPlayer,
   };
 };

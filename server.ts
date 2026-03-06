@@ -25,6 +25,7 @@ async function startServer() {
   let players: Record<string, Player> = {};
   let enemies: Record<string, Enemy> = {};
   let score = 0;
+  let mode: 'pvp' | 'pvai' = 'pvai';
 
   const broadcast = (message: GameMessage, excludeId?: string) => {
     const data = JSON.stringify(message);
@@ -38,6 +39,7 @@ async function startServer() {
 
   // Enemy Spawner
   const spawnEnemyNest = () => {
+    if (mode !== 'pvai') return;
     const x = (Math.random() - 0.5) * 40;
     const z = (Math.random() - 0.5) * 40 - 20;
     const y = 0;
@@ -73,6 +75,7 @@ async function startServer() {
 
   // Enemy AI Loop
   setInterval(() => {
+    if (mode !== 'pvai') return;
     const playerIds = Object.keys(players);
     if (playerIds.length === 0) return;
 
@@ -109,6 +112,28 @@ async function startServer() {
             type: 'enemy_fire', 
             payload: { enemyId: enemy.id, weapon: enemy.weapon, targetPos: (nearestPlayer as Player).pos } 
           });
+
+          // Hit check (simple distance-based probability)
+          const hitChance = Math.max(0.1, 1 - minDist / 40);
+          if (Math.random() < hitChance) {
+            const damage = enemy.weapon === 'ak47' ? 10 : 40;
+            (nearestPlayer as Player).health -= damage;
+            
+            if ((nearestPlayer as Player).health <= 0) {
+                (nearestPlayer as Player).health = 0;
+                broadcast({ type: 'player_death', payload: (nearestPlayer as Player).id });
+                // Reset player health after a delay
+                setTimeout(() => {
+                    if (players[(nearestPlayer as Player).id]) {
+                        players[(nearestPlayer as Player).id].health = 100;
+                        players[(nearestPlayer as Player).id].pos = [0, 1.7, 5];
+                        broadcast({ type: 'player_update', payload: players[(nearestPlayer as Player).id] });
+                    }
+                }, 3000);
+            } else {
+                broadcast({ type: 'player_damage', payload: { id: (nearestPlayer as Player).id, health: (nearestPlayer as Player).health } });
+            }
+          }
         }
       }
     });
@@ -132,7 +157,7 @@ async function startServer() {
     // Send initial state
     ws.send(JSON.stringify({
       type: 'init',
-      payload: { id, blocks, players, enemies, score }
+      payload: { id, blocks, players, enemies, score, mode }
     }));
 
     ws.on('message', (data: string) => {
@@ -142,7 +167,13 @@ async function startServer() {
 
         switch (message.type) {
           case 'player_update':
-            players[id] = { ...message.payload, id, lastUpdate: Date.now() };
+            const existingPlayer = players[id];
+            players[id] = { 
+                ...message.payload, 
+                id, 
+                health: existingPlayer ? existingPlayer.health : 100,
+                lastUpdate: Date.now() 
+            };
             broadcast({ type: 'player_update', payload: players[id], senderId: id }, id);
             break;
 
@@ -181,6 +212,40 @@ async function startServer() {
 
           case 'fire':
             broadcast({ type: 'fire', payload: message.payload, senderId: id }, id);
+            break;
+
+          case 'mode_change':
+            mode = message.payload;
+            if (mode === 'pvp') {
+              enemies = {};
+              broadcast({ type: 'enemy_update', payload: [] });
+            } else {
+              for (let i = 0; i < 3; i++) spawnEnemyNest();
+            }
+            broadcast({ type: 'mode_change', payload: mode });
+            break;
+            
+          case 'player_damage':
+            if (mode === 'pvp') {
+                const targetId = message.payload.id;
+                const damage = message.payload.damage || 10;
+                if (players[targetId]) {
+                    players[targetId].health -= damage;
+                    if (players[targetId].health <= 0) {
+                        players[targetId].health = 0;
+                        broadcast({ type: 'player_death', payload: targetId });
+                        setTimeout(() => {
+                            if (players[targetId]) {
+                                players[targetId].health = 100;
+                                players[targetId].pos = [0, 1.7, 5];
+                                broadcast({ type: 'player_update', payload: players[targetId] });
+                            }
+                        }, 3000);
+                    } else {
+                        broadcast({ type: 'player_damage', payload: { id: targetId, health: players[targetId].health } });
+                    }
+                }
+            }
             break;
         }
       } catch (e) {

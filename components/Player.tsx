@@ -12,9 +12,12 @@ interface PlayerProps {
   ammo: number;
   blocks: any[];
   removeBlock: (id: string) => void;
+  isDead: boolean;
+  mode: 'pvp' | 'pvai';
+  damagePlayer: (id: string, damage: number) => void;
 }
 
-const Player: React.FC<PlayerProps> = ({ onFire, onUpdate, currentWeapon, ammo, blocks, removeBlock }) => {
+const Player: React.FC<PlayerProps> = ({ onFire, onUpdate, currentWeapon, ammo, blocks, removeBlock, isDead, mode, damagePlayer }) => {
   const { camera, raycaster, scene } = useThree();
   const gunRef = useRef<THREE.Group>(null);
   const [isFiring, setIsFiring] = useState(false);
@@ -36,6 +39,7 @@ const Player: React.FC<PlayerProps> = ({ onFire, onUpdate, currentWeapon, ammo, 
   }, []);
 
   const handleShoot = () => {
+    if (isDead) return;
     const now = Date.now();
     const weaponConfig = WEAPONS[currentWeapon];
     if (now - lastFireTime.current < weaponConfig.fireRate) return;
@@ -54,11 +58,16 @@ const Player: React.FC<PlayerProps> = ({ onFire, onUpdate, currentWeapon, ammo, 
         const hit = intersects[0];
         const blockId = hit.object.userData?.id;
         const type = hit.object.userData?.type;
+        const weaponConfig = WEAPONS[currentWeapon];
         
         if (blockId) {
             if (type === 'enemy') {
                 // We hit an enemy
                 removeBlock(blockId); // This will trigger enemy_death on server
+                onFire(blockId);
+            } else if (type === 'player' && mode === 'pvp') {
+                // We hit another player in PvP mode
+                damagePlayer(blockId, weaponConfig.damage);
                 onFire(blockId);
             } else {
                 // We hit a block
@@ -74,6 +83,10 @@ const Player: React.FC<PlayerProps> = ({ onFire, onUpdate, currentWeapon, ammo, 
   };
 
   useFrame((state, delta) => {
+    if (isDead) {
+        velocity.current.set(0, 0, 0);
+        return;
+    }
     const { forward, backward, left, right, jump } = {
       forward: keys.current['KeyW'],
       backward: keys.current['KeyS'],

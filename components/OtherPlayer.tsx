@@ -27,7 +27,7 @@ const OtherPlayer: React.FC<OtherPlayerProps> = ({ player }) => {
   });
 
   return (
-    <group ref={meshRef}>
+    <group ref={meshRef} userData={{ type: 'player', id: player.id }}>
       {/* Body */}
       <mesh position={[0, 0.9, 0]} castShadow>
         <boxGeometry args={[0.6, 1.8, 0.6]} />
@@ -44,6 +44,16 @@ const OtherPlayer: React.FC<OtherPlayerProps> = ({ player }) => {
       <mesh position={[0.4, 0.8, -0.4]}>
         <boxGeometry args={[0.1, 0.1, 0.6]} />
         <meshStandardMaterial color="#333" />
+      </mesh>
+
+      {/* Health Bar */}
+      <mesh position={[0, 2.3, 0]}>
+        <planeGeometry args={[0.8, 0.1]} />
+        <meshBasicMaterial color="#000" />
+      </mesh>
+      <mesh position={[-(0.8 * (1 - player.health / 100)) / 2, 2.3, 0.01]}>
+        <planeGeometry args={[0.8 * (player.health / 100), 0.1]} />
+        <meshBasicMaterial color={player.health < 30 ? "#ef4444" : "#22c55e"} />
       </mesh>
 
       {/* Muzzle Flash */}

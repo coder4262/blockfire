@@ -18,7 +18,10 @@ const Game: React.FC = () => {
     currentWeapon, 
     ammo, 
     fireWeapon, 
-    updateMyPlayer 
+    updateMyPlayer,
+    isDead,
+    mode,
+    damagePlayer
   } = useStore();
 
   return (
@@ -37,6 +40,9 @@ const Game: React.FC = () => {
             ammo={ammo[currentWeapon]} 
             blocks={blocks}
             removeBlock={removeBlock}
+            isDead={isDead}
+            mode={mode}
+            damagePlayer={damagePlayer}
           />
 
           {/* Render other players */}

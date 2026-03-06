@@ -6,15 +6,39 @@ import { getTacticalBriefing } from '../services/geminiService';
 
 interface UIOverlayProps {
   score: number;
+  health: number;
+  isDead: boolean;
+  lastDamageTime: number;
+  mode: 'pvp' | 'pvai';
   currentWeapon: WeaponType;
   ammo: Record<WeaponType, number>;
   onSwitchWeapon: (type: WeaponType) => void;
   onReload: () => void;
+  onSwitchMode: (mode: 'pvp' | 'pvai') => void;
 }
 
-const UIOverlay: React.FC<UIOverlayProps> = ({ score, currentWeapon, ammo, onSwitchWeapon, onReload }) => {
+const UIOverlay: React.FC<UIOverlayProps> = ({ 
+  score, 
+  health, 
+  isDead, 
+  lastDamageTime, 
+  mode,
+  currentWeapon, 
+  ammo, 
+  onSwitchWeapon, 
+  onReload,
+  onSwitchMode
+}) => {
   const [briefing, setBriefing] = useState("Initializing tactical interface...");
-  const [loadingBriefing, setLoadingBriefing] = useState(false);
+  const [showVignette, setShowVignette] = useState(false);
+
+  useEffect(() => {
+    if (lastDamageTime > 0) {
+      setShowVignette(true);
+      const timer = setTimeout(() => setShowVignette(false), 200);
+      return () => clearTimeout(timer);
+    }
+  }, [lastDamageTime]);
 
   useEffect(() => {
     const updateBriefing = async () => {
@@ -31,6 +55,20 @@ const UIOverlay: React.FC<UIOverlayProps> = ({ score, currentWeapon, ammo, onSwi
 
   return (
     <div className="absolute inset-0 pointer-events-none flex flex-col justify-between p-6 select-none font-mono text-white">
+      {/* Damage Vignette */}
+      <div 
+        className={`absolute inset-0 bg-red-600/20 transition-opacity duration-200 pointer-events-none ${showVignette ? 'opacity-100' : 'opacity-0'}`}
+        style={{ boxShadow: 'inset 0 0 150px rgba(220, 38, 38, 0.5)' }}
+      />
+
+      {/* Death Screen */}
+      {isDead && (
+        <div className="absolute inset-0 bg-black/90 flex flex-col items-center justify-center z-[100] pointer-events-auto">
+            <h2 className="text-7xl font-black italic text-red-600 mb-4 animate-pulse">Wasted</h2>
+            <p className="text-white/60 uppercase tracking-widest">Re-deploying in 3 seconds...</p>
+        </div>
+      )}
+
       {/* Top Bar */}
       <div className="flex justify-between items-start">
         <div className="bg-black/60 p-4 border-l-4 border-red-600 backdrop-blur-md">
@@ -41,6 +79,39 @@ const UIOverlay: React.FC<UIOverlayProps> = ({ score, currentWeapon, ammo, onSwi
         <div className="bg-black/60 p-4 border-r-4 border-blue-500 backdrop-blur-md text-right">
           <div className="text-sm text-blue-400 uppercase">Score</div>
           <div className="text-3xl font-bold font-mono tracking-widest">{score.toLocaleString().padStart(6, '0')}</div>
+        </div>
+      </div>
+
+      {/* Mode Selector */}
+      <div className="absolute top-24 right-6 flex flex-col gap-2 pointer-events-auto">
+        <div className="text-[10px] text-white/40 uppercase font-bold text-right">Game Mode</div>
+        <div className="flex gap-1">
+            <button 
+                onClick={() => onSwitchMode('pvai')}
+                className={`px-4 py-1 text-xs font-bold uppercase transition-all border ${mode === 'pvai' ? 'bg-blue-600 border-blue-400 text-white' : 'bg-black/40 border-white/10 text-white/40 hover:border-white/30'}`}
+            >
+                PvAI
+            </button>
+            <button 
+                onClick={() => onSwitchMode('pvp')}
+                className={`px-4 py-1 text-xs font-bold uppercase transition-all border ${mode === 'pvp' ? 'bg-red-600 border-red-400 text-white' : 'bg-black/40 border-white/10 text-white/40 hover:border-white/30'}`}
+            >
+                PvP
+            </button>
+        </div>
+      </div>
+
+      {/* Health Bar */}
+      <div className="absolute bottom-40 left-6 w-64 pointer-events-auto">
+        <div className="flex justify-between items-end mb-1">
+            <div className="text-xs font-black uppercase text-red-500">Vitality</div>
+            <div className="text-xl font-black">{health}%</div>
+        </div>
+        <div className="h-4 bg-black/60 border border-white/10 p-0.5">
+            <div 
+                className={`h-full transition-all duration-300 ${health < 30 ? 'bg-red-600 animate-pulse' : 'bg-red-500'}`}
+                style={{ width: `${health}%` }}
+            />
         </div>
       </div>
 

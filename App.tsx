@@ -8,10 +8,15 @@ import { WeaponType } from './types';
 const App: React.FC = () => {
   const { 
     score, 
+    health,
+    isDead,
+    lastDamageTime,
+    mode,
     currentWeapon, 
     ammo, 
     switchWeapon, 
-    reloadWeapon 
+    reloadWeapon,
+    switchMode
   } = useStore();
 
   useEffect(() => {
@@ -37,10 +42,15 @@ const App: React.FC = () => {
       {/* UI Overlay */}
       <UIOverlay 
         score={score} 
+        health={health}
+        isDead={isDead}
+        lastDamageTime={lastDamageTime}
+        mode={mode}
         currentWeapon={currentWeapon} 
         ammo={ammo}
         onSwitchWeapon={switchWeapon}
         onReload={reloadWeapon}
+        onSwitchMode={switchMode}
       />
 
       {/* Start Prompt overlay if not locked */}
