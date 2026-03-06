@@ -27,15 +27,25 @@ const Player: React.FC<PlayerProps> = ({ onFire, onUpdate, currentWeapon, ammo, 
   const velocity = useRef(new THREE.Vector3());
   const direction = useRef(new THREE.Vector3());
   const keys = useRef<Record<string, boolean>>({});
+  const headBobActive = useRef(0);
+  const gunSway = useRef(new THREE.Vector2(0, 0));
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => (keys.current[e.code] = true);
     const handleKeyUp = (e: KeyboardEvent) => (keys.current[e.code] = false);
+    const handleMouseMove = (e: MouseEvent) => {
+        if (document.pointerLockElement) {
+            gunSway.current.x = THREE.MathUtils.lerp(gunSway.current.x, e.movementX * 0.001, 0.1);
+            gunSway.current.y = THREE.MathUtils.lerp(gunSway.current.y, e.movementY * 0.001, 0.1);
+        }
+    };
     window.addEventListener('keydown', handleKeyDown);
     window.addEventListener('keyup', handleKeyUp);
+    window.addEventListener('mousemove', handleMouseMove);
     return () => {
       window.removeEventListener('keydown', handleKeyDown);
       window.removeEventListener('keyup', handleKeyUp);
+      window.removeEventListener('mousemove', handleMouseMove);
     };
   }, []);
 
@@ -50,8 +60,13 @@ const Player: React.FC<PlayerProps> = ({ onFire, onUpdate, currentWeapon, ammo, 
     setIsFiring(true);
     setTimeout(() => setIsFiring(false), 50);
 
+    // Recoil effect
+    if (gunRef.current) {
+        gunRef.current.position.z += 0.15;
+        gunRef.current.rotation.x -= 0.1;
+    }
+
     // Shooting logic
-    // Fix: raycaster.setFromCamera requires a Vector2 object, not a plain object literal.
     raycaster.setFromCamera(new THREE.Vector2(0, 0), camera);
     const intersects = raycaster.intersectObjects(scene.children, true);
     
@@ -70,15 +85,12 @@ const Player: React.FC<PlayerProps> = ({ onFire, onUpdate, currentWeapon, ammo, 
 
         if (blockId) {
             if (type === 'enemy') {
-                // We hit an enemy
-                removeBlock(blockId); // This will trigger enemy_death on server
+                removeBlock(blockId);
                 onFire(blockId);
             } else if (type === 'player' && mode === 'pvp') {
-                // We hit another player in PvP mode
                 damagePlayer(blockId, weaponConfig.damage);
                 onFire(blockId);
             } else {
-                // We hit a block
                 removeBlock(blockId);
                 onFire(blockId);
             }
@@ -104,7 +116,7 @@ const Player: React.FC<PlayerProps> = ({ onFire, onUpdate, currentWeapon, ammo, 
     };
 
     // Movement
-    const speed = 5;
+    const speed = 25; // Increased base speed for smoother acceleration
     direction.current.z = Number(forward) - Number(backward);
     direction.current.x = Number(right) - Number(left);
     direction.current.normalize();
@@ -115,7 +127,16 @@ const Player: React.FC<PlayerProps> = ({ onFire, onUpdate, currentWeapon, ammo, 
     camera.position.x += velocity.current.x * delta;
     camera.position.z += velocity.current.z * delta;
 
-    velocity.current.multiplyScalar(0.9); // Friction
+    velocity.current.multiplyScalar(0.85); // Slightly more friction for control
+
+    // Head Bobbing
+    const isMoving = forward || backward || left || right;
+    if (isMoving) {
+        headBobActive.current += delta * 10;
+        camera.position.y = 1.7 + Math.sin(headBobActive.current) * 0.05;
+    } else {
+        camera.position.y = THREE.MathUtils.lerp(camera.position.y, 1.7, 0.1);
+    }
 
     // Send update to server
     onUpdate(
@@ -125,19 +146,37 @@ const Player: React.FC<PlayerProps> = ({ onFire, onUpdate, currentWeapon, ammo, 
 
     // Gun positioning (follow camera)
     if (gunRef.current) {
-      gunRef.current.position.copy(camera.position);
-      gunRef.current.rotation.copy(camera.rotation);
+      // Smoothly follow camera
+      const targetPos = camera.position.clone();
+      gunRef.current.position.lerp(targetPos, 0.4);
+      
+      // Smoothly match rotation
+      const targetQuat = camera.quaternion.clone();
+      gunRef.current.quaternion.slerp(targetQuat, 0.4);
+
+      // Offset to right/bottom
       gunRef.current.translateX(0.4);
-      gunRef.current.translateY(-0.3);
+      gunRef.current.translateY(-0.35);
       gunRef.current.translateZ(-0.6);
       
-      // Idle sway
-      gunRef.current.position.y += Math.sin(state.clock.elapsedTime * 2) * 0.005;
+      // Idle sway (breathing)
+      gunRef.current.position.y += Math.sin(state.clock.elapsedTime * 1.5) * 0.003;
+      gunRef.current.position.x += Math.cos(state.clock.elapsedTime * 0.75) * 0.002;
+
+      // Movement sway
+      if (isMoving) {
+          gunRef.current.position.y += Math.sin(headBobActive.current) * 0.01;
+          gunRef.current.position.x += Math.cos(headBobActive.current * 0.5) * 0.01;
+      }
+
+      // Mouse sway (lag behind)
+      gunRef.current.position.x -= gunSway.current.x * 0.5;
+      gunRef.current.position.y += gunSway.current.y * 0.5;
+      gunSway.current.multiplyScalar(0.9); // Decay sway
       
-      // Recoil
-      if (isFiring) {
-        gunRef.current.position.z += 0.1;
-        gunRef.current.rotation.x -= 0.05;
+      // Recoil recovery
+      if (!isFiring) {
+          // Handled by lerp/slerp above mostly, but can add extra recovery if needed
       }
     }
 

@@ -9,7 +9,12 @@ interface OtherPlayerProps {
 
 const OtherPlayer: React.FC<OtherPlayerProps> = ({ player }) => {
   const meshRef = useRef<THREE.Group>(null);
+  const targetPos = useRef(new THREE.Vector3(...player.pos));
   const [isFiring, setIsFiring] = useState(false);
+
+  useEffect(() => {
+    targetPos.current.set(...player.pos);
+  }, [player.pos]);
 
   useEffect(() => {
     if (player.lastFire) {
@@ -19,10 +24,14 @@ const OtherPlayer: React.FC<OtherPlayerProps> = ({ player }) => {
     }
   }, [player.lastFire]);
 
-  useFrame(() => {
+  useFrame((state, delta) => {
     if (meshRef.current) {
-      meshRef.current.position.lerp(new THREE.Vector3(...player.pos), 0.1);
-      meshRef.current.rotation.set(...player.rot);
+      // Smooth position interpolation
+      meshRef.current.position.lerp(targetPos.current, 0.15);
+      
+      // Smooth rotation interpolation
+      const targetRot = new THREE.Euler(...player.rot);
+      meshRef.current.quaternion.slerp(new THREE.Quaternion().setFromEuler(targetRot), 0.2);
     }
   });
 

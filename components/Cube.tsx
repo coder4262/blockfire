@@ -1,6 +1,7 @@
 
-import React, { useState } from 'react';
-import { ThreeEvent } from '@react-three/fiber';
+import React, { useState, useRef } from 'react';
+import { ThreeEvent, useFrame } from '@react-three/fiber';
+import * as THREE from 'three';
 import { BLOCK_COLORS } from '../constants';
 import { BlockType } from '../types';
 
@@ -13,7 +14,21 @@ interface CubeProps {
 }
 
 const Cube: React.FC<CubeProps> = ({ position, type, id, removeBlock, addBlock }) => {
+  const meshRef = useRef<THREE.Mesh>(null);
   const [hovered, setHovered] = useState(false);
+  const spawnTime = useRef(Date.now());
+
+  useFrame(() => {
+    if (meshRef.current) {
+        const elapsed = Date.now() - spawnTime.current;
+        if (elapsed < 300) {
+            const scale = THREE.MathUtils.lerp(0, 1, elapsed / 300);
+            meshRef.current.scale.set(scale, scale, scale);
+        } else {
+            meshRef.current.scale.set(1, 1, 1);
+        }
+    }
+  });
 
   const handleClick = (e: ThreeEvent<MouseEvent>) => {
     e.stopPropagation();
@@ -35,6 +50,7 @@ const Cube: React.FC<CubeProps> = ({ position, type, id, removeBlock, addBlock }
 
   return (
     <mesh
+      ref={meshRef}
       position={position}
       name={id}
       userData={{ type: 'block', id }}

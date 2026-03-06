@@ -9,8 +9,13 @@ interface EnemyComponentProps {
 
 const EnemyComponent: React.FC<EnemyComponentProps> = ({ enemy }) => {
   const meshRef = useRef<THREE.Group>(null);
+  const targetPos = useRef(new THREE.Vector3(...enemy.pos));
   const [isFiring, setIsFiring] = useState(false);
   const [tracerVisible, setTracerVisible] = useState(false);
+
+  useEffect(() => {
+    targetPos.current.set(...enemy.pos);
+  }, [enemy.pos]);
 
   useEffect(() => {
     if (enemy.lastFire) {
@@ -24,10 +29,14 @@ const EnemyComponent: React.FC<EnemyComponentProps> = ({ enemy }) => {
     }
   }, [enemy.lastFire]);
 
-  useFrame(() => {
+  useFrame((state, delta) => {
     if (meshRef.current) {
-      meshRef.current.position.lerp(new THREE.Vector3(...enemy.pos), 0.1);
-      meshRef.current.rotation.set(...enemy.rot);
+      // Smooth position interpolation
+      meshRef.current.position.lerp(targetPos.current, 0.1);
+      
+      // Smooth rotation interpolation
+      const targetRot = new THREE.Euler(...enemy.rot);
+      meshRef.current.quaternion.slerp(new THREE.Quaternion().setFromEuler(targetRot), 0.1);
     }
   });
 

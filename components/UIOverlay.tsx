@@ -1,5 +1,6 @@
 
 import React, { useEffect, useState } from 'react';
+import * as THREE from 'three';
 import { WeaponType } from '../types';
 import { WEAPONS } from '../constants';
 import { getTacticalBriefing } from '../services/geminiService';
@@ -32,6 +33,16 @@ const UIOverlay: React.FC<UIOverlayProps> = ({
   const [briefing, setBriefing] = useState("Initializing tactical interface...");
   const [isBriefingLoading, setIsBriefingLoading] = useState(false);
   const [showVignette, setShowVignette] = useState(false);
+  const [displayedHealth, setDisplayedHealth] = useState(health);
+  const [displayedScore, setDisplayedScore] = useState(score);
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+        setDisplayedHealth(prev => THREE.MathUtils.lerp(prev, health, 0.1));
+        setDisplayedScore(prev => Math.floor(THREE.MathUtils.lerp(prev, score, 0.1)));
+    }, 16);
+    return () => clearInterval(timer);
+  }, [health, score]);
 
   useEffect(() => {
     if (lastDamageTime > 0) {
@@ -79,7 +90,7 @@ const UIOverlay: React.FC<UIOverlayProps> = ({
         
         <div className="bg-black/60 p-4 border-r-4 border-blue-500 backdrop-blur-md text-right">
           <div className="text-sm text-blue-400 uppercase">Score</div>
-          <div className="text-3xl font-bold font-mono tracking-widest">{score.toLocaleString().padStart(6, '0')}</div>
+          <div className="text-3xl font-bold font-mono tracking-widest">{displayedScore.toLocaleString().padStart(6, '0')}</div>
         </div>
       </div>
 
@@ -106,12 +117,12 @@ const UIOverlay: React.FC<UIOverlayProps> = ({
       <div className="absolute bottom-40 left-6 w-64 pointer-events-auto">
         <div className="flex justify-between items-end mb-1">
             <div className="text-xs font-black uppercase text-red-500">Vitality</div>
-            <div className="text-xl font-black">{health}%</div>
+            <div className="text-xl font-black">{Math.round(displayedHealth)}%</div>
         </div>
         <div className="h-4 bg-black/60 border border-white/10 p-0.5">
             <div 
-                className={`h-full transition-all duration-300 ${health < 30 ? 'bg-red-600 animate-pulse' : 'bg-red-500'}`}
-                style={{ width: `${health}%` }}
+                className={`h-full transition-all duration-300 ${displayedHealth < 30 ? 'bg-red-600 animate-pulse' : 'bg-red-500'}`}
+                style={{ width: `${displayedHealth}%` }}
             />
         </div>
       </div>

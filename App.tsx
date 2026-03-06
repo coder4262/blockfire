@@ -20,6 +20,23 @@ const App: React.FC = () => {
   } = useStore();
 
   useEffect(() => {
+    const handleLockChange = () => {
+        const overlay = document.getElementById('instructions-overlay');
+        if (overlay) {
+            if (document.pointerLockElement) {
+                overlay.classList.add('opacity-0');
+                overlay.classList.remove('opacity-100');
+            } else {
+                overlay.classList.add('opacity-100');
+                overlay.classList.remove('opacity-0');
+            }
+        }
+    };
+    document.addEventListener('pointerlockchange', handleLockChange);
+    return () => document.removeEventListener('pointerlockchange', handleLockChange);
+  }, []);
+
+  useEffect(() => {
     const handleKeyPress = (e: KeyboardEvent) => {
       if (e.key === '1') switchWeapon('pistol');
       if (e.key === '2') switchWeapon('rifle');
@@ -59,7 +76,7 @@ const App: React.FC = () => {
       {/* Start Prompt overlay if not locked */}
       <div 
         id="instructions-overlay"
-        className="absolute inset-0 bg-black/80 flex items-center justify-center z-50 transition-opacity pointer-events-none opacity-0"
+        className="absolute inset-0 bg-black/80 flex items-center justify-center z-50 transition-opacity duration-500 pointer-events-none opacity-100"
         style={{ pointerEvents: 'none' }}
       >
         <div className="text-center p-12 border-4 border-red-600 bg-black max-w-lg">
