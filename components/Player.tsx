@@ -165,8 +165,10 @@ const Player: React.FC<PlayerProps> = ({ onFire, onUpdate, currentWeapon, ammo, 
     // FOV adjustment
     const baseFov = 75;
     const adsFov = 40;
-    camera.fov = THREE.MathUtils.lerp(baseFov, adsFov, adsFactor.current);
-    camera.updateProjectionMatrix();
+    if (camera instanceof THREE.PerspectiveCamera) {
+        camera.fov = THREE.MathUtils.lerp(baseFov, adsFov, adsFactor.current);
+        camera.updateProjectionMatrix();
+    }
 
     // Send update to server
     onUpdate(

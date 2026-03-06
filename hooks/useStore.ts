@@ -19,6 +19,9 @@ export const useStore = () => {
     sniper: WEAPONS.sniper.maxAmmo,
     ak47: WEAPONS.ak47.maxAmmo,
     awm: WEAPONS.awm.maxAmmo,
+    shotgun: WEAPONS.shotgun.maxAmmo,
+    smg: WEAPONS.smg.maxAmmo,
+    rocket: WEAPONS.rocket.maxAmmo,
   });
   const [myId, setMyId] = useState<string | null>(null);
   const socketRef = useRef<WebSocket | null>(null);

@@ -6,6 +6,8 @@
   "scripts": {
     "dev": "tsx server.ts",
     "build": "vite build",
+    "start": "NODE_ENV=production tsx server.ts",
+    "lint": "tsc --noEmit",
     "preview": "vite preview"
   },
   "dependencies": {
@@ -13,7 +15,9 @@
     "@react-three/drei": "^10.7.7",
     "@react-three/fiber": "^9.5.0",
     "@tailwindcss/vite": "^4.2.1",
+    "compression": "^1.8.1",
     "express": "^5.2.1",
+    "helmet": "^8.1.0",
     "nanoid": "^5.1.6",
     "react": "^19.2.4",
     "react-dom": "^19.2.4",
@@ -23,6 +27,7 @@
     "ws": "^8.19.0"
   },
   "devDependencies": {
+    "@types/compression": "^1.8.1",
     "@types/node": "^22.14.0",
     "@vitejs/plugin-react": "^5.0.0",
     "typescript": "~5.8.2",

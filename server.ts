@@ -3,12 +3,26 @@ import path from 'path';
 import { createServer as createViteServer } from 'vite';
 import { WebSocketServer, WebSocket } from 'ws';
 import { nanoid } from 'nanoid';
+import compression from 'compression';
+import helmet from 'helmet';
 import { Block, Player, GameMessage, Enemy, WeaponType } from './types';
 
 const PORT = process.env.PORT || 3000;
 
 async function startServer() {
   const app = express();
+
+  // Security and Performance
+  app.use(helmet({
+    contentSecurityPolicy: false, // Disable for development/simplicity with Three.js/Vite
+  }));
+  app.use(compression());
+
+  // Health check for Render
+  app.get('/health', (req, res) => {
+    res.status(200).send('OK');
+  });
+
   const server = app.listen(Number(PORT), '0.0.0.0', () => {
     console.log(`Server running on http://0.0.0.0:${PORT}`);
   });
@@ -307,7 +321,7 @@ async function startServer() {
               enemies = {};
               broadcast({ type: 'enemy_update', payload: [] });
             } else {
-              for (let i = 0; i < 3; i++) spawnEnemyNest();
+              for (let i = 0; i < 3; i++) spawnEnemy(true);
             }
             broadcast({ type: 'mode_change', payload: mode });
             break;
@@ -360,6 +374,18 @@ async function startServer() {
       res.sendFile(path.resolve(__dirname, 'dist', 'index.html'));
     });
   }
+
+  // Graceful shutdown
+  process.on('SIGTERM', () => {
+    console.log('SIGTERM signal received: closing HTTP server');
+    server.close(() => {
+      console.log('HTTP server closed');
+      wss.close(() => {
+        console.log('WebSocket server closed');
+        process.exit(0);
+      });
+    });
+  });
 }
 
 startServer();
