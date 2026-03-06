@@ -144,7 +144,7 @@ export const useStore = () => {
     return () => {
       socket.close();
     };
-  }, [myId]);
+  }, []); // Only run on mount
 
   const sendMessage = useCallback((type: string, payload: any) => {
     if (socketRef.current?.readyState === WebSocket.OPEN) {
@@ -152,9 +152,9 @@ export const useStore = () => {
     }
   }, []);
 
-  const updateMyPlayer = useCallback((pos: [number, number, number], rot: [number, number, number]) => {
+  const updateMyPlayer = useCallback((pos: [number, number, number], rot: [number, number, number], isAds: boolean = false) => {
     if (!myId) return;
-    sendMessage('player_update', { pos, rot, currentWeapon });
+    sendMessage('player_update', { pos, rot, currentWeapon, isAds });
   }, [myId, currentWeapon, sendMessage]);
 
   const addBlock = useCallback((x: number, y: number, z: number, type: BlockType = 'grass') => {

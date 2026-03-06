@@ -1,7 +1,11 @@
 
 import { GoogleGenAI } from "@google/genai";
 
-const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+const apiKey = process.env.GEMINI_API_KEY;
+if (!apiKey || apiKey === 'undefined') {
+    console.warn("Gemini API Key is missing. Tactical briefings will be disabled. Set GEMINI_API_KEY in your environment.");
+}
+const ai = new GoogleGenAI({ apiKey: apiKey || '' });
 
 export async function getTacticalBriefing(score: number, weapon: string) {
   try {

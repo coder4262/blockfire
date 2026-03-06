@@ -46,6 +46,7 @@ export interface Player {
   health: number;
   lastUpdate: number;
   lastFire?: number;
+  isAds?: boolean;
 }
 
 export type MessageType = 

@@ -50,7 +50,7 @@ const OtherPlayer: React.FC<OtherPlayerProps> = ({ player }) => {
       </mesh>
 
       {/* Gun representation for other player */}
-      <mesh position={[0.4, 0.8, -0.4]}>
+      <mesh position={[player.isAds ? 0 : 0.4, 0.8, player.isAds ? -0.6 : -0.4]}>
         <boxGeometry args={[0.1, 0.1, 0.6]} />
         <meshStandardMaterial color="#333" />
       </mesh>
