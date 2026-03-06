@@ -76,7 +76,7 @@ async function startServer() {
   };
 
   // Spawn initial enemies
-  for (let i = 0; i < 8; i++) spawnEnemy(true);
+  for (let i = 0; i < 15; i++) spawnEnemy(true);
 
   // Enemy AI Loop
   setInterval(() => {
@@ -156,10 +156,10 @@ async function startServer() {
 
   // Periodic Spawner
   setInterval(() => {
-    if (Object.keys(enemies).length < 20) {
-      spawnEnemy(Math.random() > 0.5);
+    if (Object.keys(enemies).length < 40) {
+      spawnEnemy(Math.random() > 0.7); // Less nests, more sporadic spawns
     }
-  }, 5000);
+  }, 1000);
 
   wss.on('connection', (ws: WebSocket) => {
     const id = nanoid();

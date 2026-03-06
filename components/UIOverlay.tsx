@@ -30,6 +30,7 @@ const UIOverlay: React.FC<UIOverlayProps> = ({
   onSwitchMode
 }) => {
   const [briefing, setBriefing] = useState("Initializing tactical interface...");
+  const [loadingBriefing, setLoadingBriefing] = useState(false);
   const [showVignette, setShowVignette] = useState(false);
 
   useEffect(() => {

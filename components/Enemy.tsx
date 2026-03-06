@@ -10,11 +10,16 @@ interface EnemyComponentProps {
 const EnemyComponent: React.FC<EnemyComponentProps> = ({ enemy }) => {
   const meshRef = useRef<THREE.Group>(null);
   const [isFiring, setIsFiring] = useState(false);
+  const [tracerVisible, setTracerVisible] = useState(false);
 
   useEffect(() => {
     if (enemy.lastFire) {
       setIsFiring(true);
-      const timer = setTimeout(() => setIsFiring(false), 50);
+      setTracerVisible(true);
+      const timer = setTimeout(() => {
+        setIsFiring(false);
+        setTracerVisible(false);
+      }, 50);
       return () => clearTimeout(timer);
     }
   }, [enemy.lastFire]);
@@ -59,6 +64,14 @@ const EnemyComponent: React.FC<EnemyComponentProps> = ({ enemy }) => {
       {/* Muzzle Flash */}
       {isFiring && (
         <pointLight position={[0.4, 1.2, -1.2]} intensity={10} distance={5} color="#fbbf24" />
+      )}
+
+      {/* Tracer Line */}
+      {tracerVisible && (
+        <mesh position={[0.4, 1.2, -10]} rotation={[Math.PI / 2, 0, 0]}>
+          <cylinderGeometry args={[0.01, 0.01, 20]} />
+          <meshBasicMaterial color="#fbbf24" transparent opacity={0.6} />
+        </mesh>
       )}
     </group>
   );
