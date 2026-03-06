@@ -30,7 +30,7 @@ const UIOverlay: React.FC<UIOverlayProps> = ({
   onSwitchMode
 }) => {
   const [briefing, setBriefing] = useState("Initializing tactical interface...");
-  const [loadingBriefing, setLoadingBriefing] = useState(false);
+  const [isBriefingLoading, setIsBriefingLoading] = useState(false);
   const [showVignette, setShowVignette] = useState(false);
 
   useEffect(() => {
@@ -43,10 +43,10 @@ const UIOverlay: React.FC<UIOverlayProps> = ({
 
   useEffect(() => {
     const updateBriefing = async () => {
-      setLoadingBriefing(true);
+      setIsBriefingLoading(true);
       const msg = await getTacticalBriefing(score, WEAPONS[currentWeapon].name);
       setBriefing(msg);
-      setLoadingBriefing(false);
+      setIsBriefingLoading(false);
     };
 
     const interval = setInterval(updateBriefing, 30000); // Every 30s
@@ -135,7 +135,7 @@ const UIOverlay: React.FC<UIOverlayProps> = ({
             <i className="fas fa-satellite-dish animate-pulse"></i>
             Tactical Feed
           </div>
-          <p className={`text-sm ${loadingBriefing ? 'opacity-50' : 'opacity-100'} transition-opacity italic`}>
+          <p className={`text-sm ${isBriefingLoading ? 'opacity-50' : 'opacity-100'} transition-opacity italic`}>
             &gt; {briefing}
           </p>
         </div>
